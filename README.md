@@ -1,3 +1,16 @@
+## Changes in Fork
+
+This fork enhances the DReyeVR framework by introducing a direct control interface for end-to-end autonomous driving models. Previously, the DReyeVR ego-vehicle could only be driven via manual VR input or CARLA's built-in traffic manager AI. This new implementation allows a Python script to take full control of the vehicle's throttle, steering, and braking.
+
+- Direct Control API for Python: New C++ methods, SetPythonControlActive(bool) and IsPythonControlActive(), were added to the CarlaWheeledVehicle class and exposed to Python through new bindings. These functions act as a gatekeeper for vehicle control.
+- Conditional Input Processing: The TickVehicleInputs method has been modified to read control commands from Python when bIsPythonControlActive is true.
+-Instant Manual Override: As a critical usability feature, any input from the steering wheel or pedals immediately sets bIsPythonControlActive to false, guaranteeing that the human driver can instantly take over from the AI at any time.
+- Disabled Hardware Dependencies: The build configuration was changed to set UseSRanipalPlugin and UseLogitechPlugin to false, removing the requirement for specific eye-tracking and steering wheel hardware at launch.
+
+See commit history and changes for details.
+  
+---
+
 # DReyeVR
 ### Welcome to DReyeVR, a VR driving simulator for behavioural and interactions research.
 
