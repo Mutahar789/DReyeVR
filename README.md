@@ -7,8 +7,56 @@ This fork enhances the DReyeVR framework by introducing a direct control interfa
 -Instant Manual Override: As a critical usability feature, any input from the steering wheel or pedals immediately sets bIsPythonControlActive to false, guaranteeing that the human driver can instantly take over from the AI at any time.
 - Disabled Hardware Dependencies: The build configuration was changed to set UseSRanipalPlugin and UseLogitechPlugin to false, removing the requirement for specific eye-tracking and steering wheel hardware at launch.
 
-See commit history and changes for details.
+## Implementation Details
+
+To enable direct Python control over the vehicle, several core files in both LibCarla and the Unreal Engine plugin were modified. The changes create a complete Remote Procedure Call (RPC) chain, from the Python API down to the C++ vehicle implementation.
+
+### LibCarla (Client and Python API)
+
+This layer is responsible for exposing the functionality to the Python client.
+
+- LibCarla/source/carla/client/Vehicle.h
+  - Declared the new public method SetPythonControlActive() in the Vehicle class interface.
+
+- LibCarla/source/carla/client/Vehicle.cpp
+  - Implemented the new method to forward the call to the active simulation episode.
+
+- LibCarla/source/carla/client/detail/Client.h
+  - Declared the new function in the main Client class to define the public-facing RPC interface.
+
+- LibCarla/source/carla/client/detail/Client.cpp
+  - Implemented the Client function to make the actual AsyncCall for the setter to the server using the new RPC endpoint name.
+
+- LibCarla/source/carla/client/detail/Simulator.h
+  - Added a proxy method to connect the Episode's call to the Client's implementation.
+
+- PythonAPI/carla/source/libcarla/Actor.cpp
+  - Added a .def() entrie using Boost.Python to bind the C++ SetPythonControlActive method to the carla.Vehicle object in Python.
+
+### Unreal Engine Plugin (Server-Side Logic)
+
+This layer receives the RPC calls from the client and executes the logic within the simulation.
+
+- Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Server/CarlaServer.cpp
+  - Added a new BIND_SYNC block to register the RPC endpoint ("set_python_control_active") and map it to a C++ lambda function that finds the target actor and calls the appropriate function.
   
+- Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Actor/CarlaActor.h & CarlaActor.cpp
+  - Declared a new virtual function in the base FCarlaActor class, providing a generic interface for the server to interact with any actor that supports this functionality.
+  - Provided the final override for the new virtual function. This implementation safely casts the generic FCarlaActor to a ACarlaWheeledVehicle before calling the final function.
+
+- Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Vehicle/CarlaWheeledVehicle.h
+  - Added the UPROPERTY bIsPythonControlActive to store the state.
+  - Declared the final UFUNCTIONs SetPythonControlActive() and IsPythonControlActive().
+
+- Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Vehicle/CarlaWheeledVehicle.cpp
+  - Implemented the final C++ logic for setting and getting the bIsPythonControlActive boolean variable.
+
+- Unreal/CarlaUE4/Plugins/DReyeVR/EgoInputs.cpp
+  - The TickVehicleInputs function was modified to check IsPythonControlActive(). If true, it allows Python to drive and the apply_control() function in the PythonAPI can be used to control the vehicle based on control predictions from an end-to-end driving model. It also contains the manual override logic to set the flag to false upon hardware input.
+
+- Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Traffic/SpeedLimitComponent.cpp
+  - Added missing #include directives for LargeMapManager.h, CarlaStatics.h, and WheeledVehicleAIController.h to fix a latent dependency bug that was exposed by the other core changes.
+
 ---
 
 # DReyeVR
