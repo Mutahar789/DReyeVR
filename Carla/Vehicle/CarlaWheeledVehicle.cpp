@@ -868,3 +868,14 @@ void ACarlaWheeledVehicle::CloseDoorPhys(const EVehicleDoor DoorIdx)
   DoorComponent->AttachToComponent(
       GetMesh(), FAttachmentTransformRules(EAttachmentRule::KeepWorld, true));
 }
+
+
+void ACarlaWheeledVehicle::SetPythonControlActive(bool bIsActive)
+{
+    bIsPythonControlActive = bIsActive;
+}
+
+bool ACarlaWheeledVehicle::IsPythonControlActive() const
+{
+    return bIsPythonControlActive;
+}

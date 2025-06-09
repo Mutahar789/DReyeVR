@@ -253,26 +253,38 @@ void AEgoVehicle::ReleaseTurnSignalL()
 
 void AEgoVehicle::TickVehicleInputs()
 {
-    FVehicleControl LastAppliedControl = GetVehicleControl();
+    const float InputThreshold = 0.02f;
+    const bool bManualInputDetected = (!FMath::IsNearlyEqual(VehicleInputs.Steering, 0.f, InputThreshold) ||
+                                     !FMath::IsNearlyEqual(VehicleInputs.Brake, 0.f, InputThreshold) ||
+                                     !FMath::IsNearlyEqual(VehicleInputs.Throttle, 0.f, InputThreshold));
 
-    int bIncludeLast = static_cast<int>(GetAutopilotStatus());
-    FVehicleControl ManualInputs;
-    // only include LastAppliedControl when autopilot is running (bc it would have flushed earlier this tick)
-    ManualInputs.Steer = VehicleInputs.Steering + bIncludeLast * LastAppliedControl.Steer;
-    ManualInputs.Brake = VehicleInputs.Brake + bIncludeLast * LastAppliedControl.Brake;
-    ManualInputs.Throttle = VehicleInputs.Throttle + bIncludeLast * LastAppliedControl.Throttle;
-    ManualInputs.bReverse = bReverse;
-
-    // apply inputs to this vehicle only when either one of the parameter is non-zero or autopilot is on
-    if ((!FMath::IsNearlyEqual(ManualInputs.Steer, 0.f, 0.02f) ||
-        !FMath::IsNearlyEqual(ManualInputs.Brake, 0.f, 0.02f) ||
-        !FMath::IsNearlyEqual(ManualInputs.Throttle, 0.f, 0.02f)) ||
-        GetAutopilotStatus())
+    // Manual override
+    if (bManualInputDetected)
     {
-        this->ApplyVehicleControl(ManualInputs, EVehicleInputPriority::User);
-        // send these inputs to the Carla (parent) vehicle
-        FlushVehicleControl();
+        if (IsPythonControlActive())
+        {
+            SetPythonControlActive(false);
+        }
+        if (GetAutopilotStatus())
+        {
+            SetAutopilot(false);
+        }
+
+        FVehicleControl ManualControl;
+        ManualControl.Steer = VehicleInputs.Steering;
+        ManualControl.Brake = VehicleInputs.Brake;
+        ManualControl.Throttle = VehicleInputs.Throttle;
+        ManualControl.bReverse = this->bReverse;
+        Super::ApplyVehicleControl(ManualControl, EVehicleInputPriority::User);
+    } 
+    
+    // idle state: otherwise the car will have sticky controls
+    else if (!IsPythonControlActive() && !GetAutopilotStatus()) {
+        FVehicleControl ZeroControl;
+        ZeroControl.bReverse = this->bReverse;
+        Super::ApplyVehicleControl(ZeroControl, EVehicleInputPriority::User);
     }
 
-    VehicleInputs = DReyeVR::UserInputs(); // clear inputs for this frame
+    FlushVehicleControl();
+    VehicleInputs = DReyeVR::UserInputs();
 }

@@ -261,6 +261,13 @@ public:
   /// @{
 
   virtual void Tick(float DeltaTime) override; // called once per frame
+
+  UFUNCTION(Category = "DReyeVR|Python Control", BlueprintCallable)
+  void SetPythonControlActive(bool bIsActive);
+
+  UFUNCTION(Category = "DReyeVR|Python Control", BlueprintCallable)
+  bool IsPythonControlActive() const;
+
 protected:
 
   virtual void BeginPlay() override;
@@ -300,6 +307,9 @@ protected:
 
   UFUNCTION(BlueprintCallable, CallInEditor)
   void ResetConstraints();
+
+  UPROPERTY(Category = "DReyeVR|Python Control", VisibleAnywhere)
+  bool bIsPythonControlActive = false;
 
 private:
 

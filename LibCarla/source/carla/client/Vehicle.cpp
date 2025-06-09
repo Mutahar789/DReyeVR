@@ -56,6 +56,10 @@ namespace client {
     }
   }
 
+  void Vehicle::SetPythonControlActive(bool is_active) {
+    GetEpisode().Lock()->SetPythonControlActive(*this, is_active);
+  }
+
   void Vehicle::ApplyPhysicsControl(const PhysicsControl &physics_control) {
     GetEpisode().Lock()->ApplyPhysicsControlToVehicle(*this, physics_control);
   }
